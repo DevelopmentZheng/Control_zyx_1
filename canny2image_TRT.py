@@ -23,21 +23,6 @@ from zengin1 import ClipEngine ,VaeEngine,UnetEngine
 class hackathon():
 
     def initialize(self):
-        self.apply_canny = CannyDetector()
-        self.model = create_model('./models/cldm_v15.yaml').cpu()
-        self.model.load_state_dict(load_state_dict('./models/control_sd15_canny.pth', location='cuda'))
-        self.model = self.model.cuda()
-        self.ddim_sampler = DDIMSampler(self.model)
-        self.clip_engine =None
-        self.vae_engine =None
-        self.unet_controlnet_engine =None
-        # self.tokenizer =None
-        self.clip_engine = ClipEngine()
-        self.vaeEngine = VaeEngine()
-
-        clip_model = getattr(self.model, "cond_stage_model")
-        self.tokenizer = clip_model.tokenizer
-
         self.state_dict = {
             "clip": "cond_stage_model",
             "control_net": "control_model",
@@ -50,8 +35,25 @@ class hackathon():
             "control_net": "./control_net.onnx",
             "unet": "./unet_new.onnx",
             "vae": "./vae_new.onnx",
-            "Control_Unet":"./onnx_model/Control_Unet_new.onnx"
+            "Control_Unet":"./Control_Unet_new.onnx"
         }
+        self.apply_canny = CannyDetector()
+        self.model = create_model('./models/cldm_v15.yaml').cpu()
+        self.model.load_state_dict(load_state_dict('/home/player/ControlNet/models/control_sd15_canny.pth', location='cuda'))
+        self.model = self.model.cuda()
+        self.ddim_sampler = DDIMSampler(self.model)
+        self.clip_engine =None
+        self.vae_engine =None
+        self.unet_controlnet_engine =None
+        # self.tokenizer =None
+        self.torch2onnx(self)
+        self.clip_engine = ClipEngine()
+        self.vaeEngine = VaeEngine()
+
+        clip_model = getattr(self.model, "cond_stage_model")
+        self.tokenizer = clip_model.tokenizer
+
+       
        
 
     def torch2onnx(self):
@@ -147,7 +149,7 @@ class hackathon():
                 )
 
                 print(" export Control_unet_model.onnx is ok ")
-                os.system("trtexec --onnx=./onnx_model/Control_Unet_new.onnx --saveEngine=cu.plan --optShapes=x_noisy:1x4x32x48,timestestep_in:1,cond_c_crossattn:1x77x768,cond_c_concat:1x3x256x384")
+                os.system("trtexec --onnx=./Control_Unet_new.onnx --saveEngine=cu.plan --optShapes=x_noisy:1x4x32x48,timestestep_in:1,cond_c_crossattn:1x77x768,cond_c_concat:1x3x256x384")
                 
     # prompt 好的， a_prompt补充的  n_prompt差的
     def process_trt(self, input_image, prompt, a_prompt, n_prompt, num_samples, image_resolution, ddim_steps, guess_mode, strength, scale, seed, eta, low_threshold, high_threshold):
