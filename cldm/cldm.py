@@ -17,11 +17,17 @@ from ldm.modules.diffusionmodules.openaimodel import UNetModel, TimestepEmbedSeq
 from ldm.models.diffusion.ddpm import LatentDiffusion
 from ldm.util import log_txt_as_img, exists, instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
+import numpy as np
 
 
 class ControlledUnetModel(UNetModel):
     def forward(self, x, timesteps=None, context=None, control=None, only_mid_control=False, **kwargs):
         hs = []
+        # print("---------------------")
+        # print(f"x{x.shape}")
+        # print(f"timesteps{timesteps.shape}")
+        # print(f"context{context.shape}")
+        # print(f"control{len(control)}///{control[0].shape}")
         with torch.no_grad():
             t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
             emb = self.time_embed(t_emb)
@@ -35,6 +41,7 @@ class ControlledUnetModel(UNetModel):
             h += control.pop()
 
         for i, module in enumerate(self.output_blocks):
+            # print(f"----------{i}-----------")
             if only_mid_control or control is None:
                 h = torch.cat([h, hs.pop()], dim=1)
             else:
@@ -43,6 +50,38 @@ class ControlledUnetModel(UNetModel):
 
         h = h.type(x.dtype)
         return self.out(h)
+    
+    # onnx
+    # def forward(self, x, timesteps=None, context=None, control=None, only_mid_control=False, **kwargs):
+    #     hs = []
+    #     print("---------------------")
+    #     print(f"x{x.shape}")
+    #     print(f"timesteps{timesteps.shape}")
+    #     print(f"context{context.shape}")
+    #     print(f"control{len(control)}///{control[0].shape}")
+    #     with torch.no_grad():
+    #         t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
+    #         emb = self.time_embed(t_emb)
+    #         h = x.type(self.dtype)
+    #         for module in self.input_blocks:
+    #             h = module(h, emb, context)
+    #             hs.append(h)
+    #         h = self.middle_block(h, emb, context)
+
+    #     if control is not None:
+    #         # h += control.pop()
+    #         h += control[-1]
+
+    #     for i, module in enumerate(self.output_blocks):
+    #         if only_mid_control or control is None:
+    #             h = torch.cat([h, hs.pop()], dim=1)
+    #         else:
+    #             # h = torch.cat([h, hs.pop() + control.pop()], dim=1)
+    #             h = torch.cat([h, hs.pop() + control[-2-i]], dim=1)
+    #         h = module(h, emb, context)
+
+    #     h = h.type(x.dtype)
+    #     return self.out(h)
 
 
 class ControlNet(nn.Module):
@@ -335,6 +374,21 @@ class ControlLDM(LatentDiffusion):
             eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=None, only_mid_control=self.only_mid_control)
         else:
             control = self.control_model(x=x_noisy, hint=torch.cat(cond['c_concat'], 1), timesteps=t, context=cond_txt)
+            control = [c * scale for c, scale in zip(control, self.control_scales)]
+            eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=control, only_mid_control=self.only_mid_control)
+
+        return eps
+
+    def forward(self, x_noisy, t, cond_c_concat, cond_c_crossattn):
+        
+        diffusion_model = self.model.diffusion_model
+
+        cond_txt = cond_c_crossattn
+
+        if cond_c_concat is None:
+            eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=None, only_mid_control=self.only_mid_control)
+        else:
+            control = self.control_model(x=x_noisy, hint=cond_c_concat, timesteps=t, context=cond_txt)
             control = [c * scale for c, scale in zip(control, self.control_scales)]
             eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=control, only_mid_control=self.only_mid_control)
 

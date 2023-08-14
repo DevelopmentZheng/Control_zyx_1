@@ -90,14 +90,19 @@ class AutoencoderKL(pl.LightningModule):
         dec = self.decoder(z)
         return dec
 
-    def forward(self, input, sample_posterior=True):
-        posterior = self.encode(input)
-        if sample_posterior:
-            z = posterior.sample()
-        else:
-            z = posterior.mode()
-        dec = self.decode(z)
-        return dec, posterior
+    # def forward(self, input, sample_posterior=True):
+    #     posterior = self.encode(input)
+    #     if sample_posterior:
+    #         z = posterior.sample()
+    #     else:
+    #         z = posterior.mode()
+    #     dec = self.decode(z)
+    #     return dec, posterior
+    
+    def forward(self, z):
+        z = self.post_quant_conv(z)
+        dec = self.decoder(z)
+        return dec
 
     def get_input(self, batch, k):
         x = batch[k]

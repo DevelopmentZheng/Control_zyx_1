@@ -1,1 +1,1 @@
-echo "preprocess"
+sh preprocess.py

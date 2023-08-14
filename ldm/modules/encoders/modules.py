@@ -8,6 +8,7 @@ import open_clip
 from ldm.util import default, count_params
 
 
+
 class AbstractEncoder(nn.Module):
     def __init__(self):
         super().__init__()
@@ -118,7 +119,10 @@ class FrozenCLIPEmbedder(AbstractEncoder):
         batch_encoding = self.tokenizer(text, truncation=True, max_length=self.max_length, return_length=True,
                                         return_overflowing_tokens=False, padding="max_length", return_tensors="pt")
         tokens = batch_encoding["input_ids"].to(self.device)
+        #chuange 
         outputs = self.transformer(input_ids=tokens, output_hidden_states=self.layer=="hidden")
+      
+        
         if self.layer == "last":
             z = outputs.last_hidden_state
         elif self.layer == "pooled":
@@ -126,6 +130,7 @@ class FrozenCLIPEmbedder(AbstractEncoder):
         else:
             z = outputs.hidden_states[self.layer_idx]
         return z
+    
 
     def encode(self, text):
         return self(text)
