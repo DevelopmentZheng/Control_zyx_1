@@ -43,7 +43,7 @@ class hackathon():
         self.model = self.model.cuda()
         self.torch2onnx(self) 
         
-        self.ddim_sampler = DDIMSampler(self.model)
+        
         self.clip_engine =None
         self.vae_engine =None
         self.unet_controlnet_engine =None
@@ -54,6 +54,7 @@ class hackathon():
 
         clip_model = getattr(self.model, "cond_stage_model")
         self.tokenizer = clip_model.tokenizer
+        self.ddim_sampler = DDIMSampler(self.model)
 
        
        
@@ -125,6 +126,7 @@ class hackathon():
 
                 if os.path.exists(self.onnx_path_dict[k]):
                     print('Control_Unet.onnx already exists!')
+                    os.system("trtexec --onnx=./Control_Unet_new.onnx --saveEngine=cu.plan --fp16  --optShapes=x_noisy:1x4x32x48,timestestep_in:1,cond_c_crossattn:1x77x768,cond_c_concat:1x3x256x384")
                     continue
                 x_noisy = torch.randn((1, 4, 32, 48), dtype=torch.float32).to("cuda")
                 timestestep_in= torch.tensor([1], dtype=torch.int64).to("cuda")
