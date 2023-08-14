@@ -41,6 +41,8 @@ class hackathon():
         self.model = create_model('./models/cldm_v15.yaml').cpu()
         self.model.load_state_dict(load_state_dict('/home/player/ControlNet/models/control_sd15_canny.pth', location='cuda'))
         self.model = self.model.cuda()
+        self.torch2onnx(self) 
+        
         self.ddim_sampler = DDIMSampler(self.model)
         self.clip_engine =None
         self.vae_engine =None
